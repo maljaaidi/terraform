@@ -1,37 +1,47 @@
-provider "aws" {}
-
-variable subnet_cidr_block {
-  type        = string
-  description = "subnet cidr block"
+provider "aws" {
+    region = "us-east-1"
 }
 
+variable vpc_cidr_block {}
+variable subnet_cidr_block {}
+variable availability_zone {}
+variable env_prefix {}
 
-resource "aws_vpc" "development-vpc" {
-    cidr_block = "10.0.0.0/16"
+resource "aws_vpc" "myapp-vpc" {
+    cidr_block = var.vpc_cidr_block
     tags = {
-        Name = "development-vpc"
+        Name = "${var.env_prefix}-vpc"
     }
 }
 
-resource "aws_subnet" "development-subnet-1" {
-    vpc_id = aws_vpc.development-vpc.id
+resource "aws_subnet" "myapp-subnet-1" {
+    vpc_id = aws_vpc.myapp-vpc.id
     cidr_block = var.subnet_cidr_block
-    availability_zone = "us-east-1a"
+    availability_zone = var.availability_zone
     tags = {
-        Name = "development-subnet"
+        Name = "${var.env_prefix}-subnet-1"
     }
 }
 
-data "aws_vpc" "default" {
-    default = true
+resource "aws_route_table" "myapp-route-table" {
+    vpc_id = aws_vpc.myapp-vpc.id
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.myapp-igw.id
+    }
+    tags = {
+        Name = "${var.env_prefix}-route-table"
+    }
 }
 
-
-output dev-vpc-id {
-    value = aws_vpc.development-vpc.id
+resource "aws_internet_gateway" "myapp-igw" {
+    vpc_id = aws_vpc.myapp-vpc.id
+    tags = {
+        Name = "${var.env_prefix}-igw"
+    }
 }
 
-output dev-subnet-id {
-    value = aws_subnet.development-subnet-1.id
+resource "aws_route_table_association" "myapp-route-table-association" {
+    subnet_id = aws_subnet.myapp-subnet-1.id
+    route_table_id = aws_route_table.myapp-route-table.id
 }
-
